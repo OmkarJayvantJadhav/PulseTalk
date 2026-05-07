@@ -42,11 +42,14 @@ class MLService:
                 top_k=None  # Return all emotions with scores
             )
             
-            logger.info(f"Loading summarization model: {settings.SUMMARIZATION_MODEL}")
-            self.summarization_pipeline = pipeline(
-                "summarization",
-                model=settings.SUMMARIZATION_MODEL
-            )
+            if settings.ENABLE_SUMMARIZATION:
+                logger.info(f"Loading summarization model: {settings.SUMMARIZATION_MODEL}")
+                self.summarization_pipeline = pipeline(
+                    "summarization",
+                    model=settings.SUMMARIZATION_MODEL
+                )
+            else:
+                logger.info("Summarization disabled for low-memory deployment")
             
             self.models_loaded = True
             logger.info("All models loaded successfully")
@@ -114,6 +117,9 @@ class MLService:
 
     def _get_summary(self, text: str) -> Optional[str]:
         """Generate a summary of the text"""
+        if not settings.ENABLE_SUMMARIZATION or self.summarization_pipeline is None:
+            return None
+
         # Summarizer works best on reasonable length text. 
         # If very short (< 50 chars), ignore.
         if len(text) < 50:

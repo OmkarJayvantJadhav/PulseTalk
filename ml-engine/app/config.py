@@ -15,8 +15,9 @@ class Settings(BaseSettings):
     
     # Models
     SENTIMENT_MODEL: str = "distilbert-base-uncased-finetuned-sst-2-english"
-    EMOTION_MODEL: str = "j-hartmann/emotion-english-distilroberta-base"
+    EMOTION_MODEL: str = "bhadresh-savani/distilbert-base-uncased-emotion"
     SUMMARIZATION_MODEL: str = "sshleifer/distilbart-cnn-12-6"
+    ENABLE_SUMMARIZATION: bool = False
     
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:5000,http://localhost:5173"
