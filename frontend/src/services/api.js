@@ -4,7 +4,17 @@
 
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const resolveApiUrl = () => {
+  const raw = (import.meta.env.VITE_API_URL || '').trim()
+  const fallback = 'http://localhost:5000/api'
+
+  if (!raw) return fallback
+
+  // Allow users to provide either backend base URL or full /api URL.
+  return raw.endsWith('/api') ? raw : `${raw.replace(/\/+$/, '')}/api`
+}
+
+const API_URL = resolveApiUrl()
 
 // Create axios instance
 const api = axios.create({
