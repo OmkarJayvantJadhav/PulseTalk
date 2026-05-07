@@ -41,7 +41,7 @@ htmlcov/
 
 # ML models cache
 .cache/
-models/
+/models/
 
 # Misc
 *.bak
