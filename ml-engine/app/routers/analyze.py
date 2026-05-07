@@ -28,7 +28,7 @@ async def analyze_text(request: Request, body: AnalysisRequest):
     try:
         ml_service = request.app.state.ml_service
         
-        if not ml_service or not ml_service.models_loaded:
+        if not ml_service:
             raise HTTPException(
                 status_code=503,
                 detail="ML service not available"
@@ -59,7 +59,7 @@ async def analyze_batch(request: Request, body: BatchAnalysisRequest):
     try:
         ml_service = request.app.state.ml_service
         
-        if not ml_service or not ml_service.models_loaded:
+        if not ml_service:
             raise HTTPException(
                 status_code=503,
                 detail="ML service not available"
