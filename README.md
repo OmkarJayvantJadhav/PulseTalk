@@ -445,104 +445,16 @@ npm run test:watch       # Watch mode
 
 ---
 
-## 🚢 Deployment
+## 🖥️ Local-Only Setup
 
-### Frontend (Vercel)
+This repository is currently configured for local development only.
 
-1. **Connect Repository**
-   - Go to [vercel.com](https://vercel.com)
-   - Import your Git repository
-   - Select `frontend` as root directory
-
-2. **Configure Build Settings**
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-   - Install Command: `npm install`
-
-3. **Set Environment Variables**
-   ```
-   VITE_API_URL=https://your-backend-url.com/api
-   ```
-
-4. **Deploy**
-   - Click "Deploy"
-   - Vercel will auto-deploy on every push to main branch
-
-### Backend (Render)
-
-1. **Create Web Service**
-   - Go to [render.com](https://render.com)
-   - New → Web Service
-   - Connect repository
-
-2. **Configure Service**
-   - Name: `pulsetalk-backend`
-   - Root Directory: `backend`
-   - Environment: `Node`
-   - Build Command: `npm install`
-   - Start Command: `npm start`
-
-3. **Set Environment Variables**
-   ```
-   PORT=5000
-   NODE_ENV=production
-   MONGODB_URI=<your-mongodb-atlas-uri>
-   JWT_ACCESS_SECRET=<your-access-secret>
-   JWT_REFRESH_SECRET=<your-refresh-secret>
-   JWT_ACCESS_EXPIRY=15m
-   JWT_REFRESH_EXPIRY=7d
-   ML_ENGINE_URL=<your-ml-engine-url>
-   FRONTEND_URL=<your-frontend-url>
-   ```
-
-4. **Deploy**
-   - Click "Create Web Service"
-
-> ℹ️ A ready-to-use [`render.yaml`](render.yaml) blueprint is included at the repo root.
-
-### ML Engine (Render)
-
-1. **Create Web Service**
-   - New → Web Service
-   - Connect repository
-
-2. **Configure Service**
-   - Name: `pulsetalk-ml-engine`
-   - Root Directory: `ml-engine`
-   - Environment: `Python 3`
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-
-3. **Set Environment Variables**
-   ```
-   HOST=0.0.0.0
-   PORT=10000
-   DEBUG=false
-   SENTIMENT_MODEL=distilbert-base-uncased-finetuned-sst-2-english
-   EMOTION_MODEL=j-hartmann/emotion-english-distilroberta-base
-   SUMMARIZATION_MODEL=sshleifer/distilbart-cnn-12-6
-   ALLOWED_ORIGINS=https://your-backend.onrender.com,https://your-frontend.vercel.app
-   LOG_LEVEL=INFO
-   ```
-
-4. **Deploy**
-   - Click "Create Web Service"
-   - First deploy takes ~10–15 minutes (model download + cold start). Render's free tier (512 MB RAM) is **not** enough to load all three models — use at least the **Starter** plan.
-
-### Database (MongoDB Atlas)
-
-1. **Create Cluster**
-   - Go to [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
-   - Create free M0 cluster
-
-2. **Configure Access**
-   - Database Access: Create user with password
-   - Network Access: Add IP (0.0.0.0/0 for all IPs)
-
-3. **Get Connection String**
-   - Connect → Connect your application
-   - Copy connection string
-   - Replace `<password>` with your password
+- Deployment-specific files and guides have been removed.
+- Use the `Quick Start` section above to run all services locally.
+- Keep these local URLs:
+  - Frontend: `http://localhost:5173`
+  - Backend: `http://localhost:5000`
+  - ML Engine: `http://localhost:8000`
 
 ---
 
@@ -575,7 +487,7 @@ Confirm Mongo is running: `netstat -an | findstr 27017`. If you don't have a loc
 The ML engine isn't up or its models aren't loaded. Hit `http://localhost:8000/health` and confirm `"models_loaded": true` before retrying.
 
 ### CORS errors in the browser
-The frontend origin must be whitelisted in **both** backend (`FRONTEND_URL`) and ML engine (`ALLOWED_ORIGINS`).
+The frontend origin must be whitelisted in **both** backend (`FRONTEND_URL` or `FRONTEND_URLS`) and ML engine (`ALLOWED_ORIGINS`).
 
 ---
 

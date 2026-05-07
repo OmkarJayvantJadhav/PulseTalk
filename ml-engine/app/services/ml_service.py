@@ -26,7 +26,7 @@ class MLService:
         self.models_loaded = False
     
     def load_models(self) -> None:
-        """Load models based on enabled feature flags"""
+        """Load sentiment, emotion, and summarization models"""
         try:
             logger.info(f"Loading sentiment model: {settings.SENTIMENT_MODEL}")
             self.sentiment_pipeline = pipeline(
@@ -35,24 +35,18 @@ class MLService:
                 top_k=None  # Return all labels with scores
             )
             
-            if settings.ENABLE_EMOTION_MODEL:
-                logger.info(f"Loading emotion model: {settings.EMOTION_MODEL}")
-                self.emotion_pipeline = pipeline(
-                    "text-classification",
-                    model=settings.EMOTION_MODEL,
-                    top_k=None  # Return all emotions with scores
-                )
-            else:
-                logger.info("Emotion model disabled for low-memory deployment")
+            logger.info(f"Loading emotion model: {settings.EMOTION_MODEL}")
+            self.emotion_pipeline = pipeline(
+                "text-classification",
+                model=settings.EMOTION_MODEL,
+                top_k=None  # Return all emotions with scores
+            )
             
-            if settings.ENABLE_SUMMARIZATION:
-                logger.info(f"Loading summarization model: {settings.SUMMARIZATION_MODEL}")
-                self.summarization_pipeline = pipeline(
-                    "summarization",
-                    model=settings.SUMMARIZATION_MODEL
-                )
-            else:
-                logger.info("Summarization disabled for low-memory deployment")
+            logger.info(f"Loading summarization model: {settings.SUMMARIZATION_MODEL}")
+            self.summarization_pipeline = pipeline(
+                "summarization",
+                model=settings.SUMMARIZATION_MODEL
+            )
             
             self.models_loaded = True
             logger.info("All models loaded successfully")
@@ -60,11 +54,6 @@ class MLService:
         except Exception as e:
             logger.error(f"Failed to load models: {e}")
             raise RuntimeError(f"Model loading failed: {e}")
-
-    def ensure_models_loaded(self) -> None:
-        """Lazy-load models on first request to avoid startup OOM."""
-        if not self.models_loaded:
-            self.load_models()
     
     def _normalize_sentiment(self, label: str) -> str:
         """Normalize sentiment labels to standard format"""
@@ -99,12 +88,6 @@ class MLService:
     
     def _get_emotion_result(self, text: str) -> Dict[str, Any]:
         """Get emotion analysis result for text"""
-        if not settings.ENABLE_EMOTION_MODEL or self.emotion_pipeline is None:
-            return {
-                "emotions": [EmotionScore(emotion="neutral", score=1.0)],
-                "dominant_emotion": "neutral"
-            }
-
         results = self.emotion_pipeline(text[:10000], truncation=True, max_length=512)
         
         emotions = []
@@ -131,9 +114,6 @@ class MLService:
 
     def _get_summary(self, text: str) -> Optional[str]:
         """Generate a summary of the text"""
-        if not settings.ENABLE_SUMMARIZATION or self.summarization_pipeline is None:
-            return None
-
         # Summarizer works best on reasonable length text. 
         # If very short (< 50 chars), ignore.
         if len(text) < 50:
@@ -172,7 +152,8 @@ class MLService:
         Returns:
             AnalysisResult with sentiment, score, confidence, emotions, and summary
         """
-        self.ensure_models_loaded()
+        if not self.models_loaded:
+            raise RuntimeError("Models not loaded")
         
         # Get sentiment analysis
         sentiment_result = self._get_sentiment_result(text)

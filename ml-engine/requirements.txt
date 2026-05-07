@@ -13,9 +13,8 @@ tokenizers>=0.20.0
 huggingface-hub>=0.26.0
 safetensors>=0.4.5
 
-# PyTorch CPU-only build (required for Render free instances)
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.11.0+cpu
+# PyTorch (CPU build is installed separately via the cpu index in setup)
+torch>=2.5.0
 
 # HTTP client (used by FastAPI TestClient and any outbound calls)
 httpx>=0.27.0

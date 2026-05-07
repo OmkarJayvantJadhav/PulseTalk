@@ -26,11 +26,12 @@ ml_service: MLService = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan - initialize service; models load lazily."""
+    """Application lifespan - load models on startup"""
     global ml_service
-    logger.info("Initializing ML service...")
+    logger.info("Loading ML models...")
     ml_service = MLService()
-    logger.info("ML service initialized (lazy model loading enabled)")
+    ml_service.load_models()
+    logger.info("ML models loaded successfully")
     
     # Make ml_service available to routes
     app.state.ml_service = ml_service
