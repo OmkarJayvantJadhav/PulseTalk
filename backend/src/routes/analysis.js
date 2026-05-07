@@ -10,6 +10,24 @@ const { mlService, socialMediaScraper } = require('../services');
 const { authenticate, analysisValidation } = require('../middleware');
 const { logger } = require('../config/logger');
 
+const ALLOWED_PLATFORMS = new Set([
+  'youtube',
+  'twitter',
+  'instagram',
+  'facebook',
+  'reddit',
+  'linkedin',
+  'tiktok',
+  'other'
+]);
+
+const normalizePlatform = (platform) => {
+  const value = String(platform || '').toLowerCase();
+  return ALLOWED_PLATFORMS.has(value) ? value : 'other';
+};
+
+const clampText = (value, max) => String(value || '').slice(0, max);
+
 /**
  * POST /api/analysis
  * Create new analysis
@@ -21,6 +39,12 @@ router.post('/', authenticate, analysisValidation.create, async (req, res, next)
 
     // Check credits
     const user = await User.findById(userId);
+    if (!user) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'User not found'
+      });
+    }
     if (user.analysisCredits <= 0) {
       return res.status(402).json({
         error: 'Payment Required',
@@ -36,8 +60,11 @@ router.post('/', authenticate, analysisValidation.create, async (req, res, next)
       user: userId,
       title,
       description,
-      inputText: text,
-      result: mlService.transformResult(mlResult),
+      inputText: clampText(text, 10000),
+      result: {
+        ...mlService.transformResult(mlResult),
+        text: clampText(text, 15000)
+      },
       tags,
       metadata: {
         processingTime: mlResult.processingTime,
@@ -80,6 +107,12 @@ router.post('/url', authenticate, analysisValidation.createFromUrl, async (req, 
 
     // Check credits
     const user = await User.findById(userId);
+    if (!user) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'User not found'
+      });
+    }
     if (user.analysisCredits < URL_ANALYSIS_COST) {
       return res.status(402).json({
         error: 'Payment Required',
@@ -167,7 +200,7 @@ router.post('/url', authenticate, analysisValidation.createFromUrl, async (req, 
       })).sort((a, b) => b.score - a.score);
       
       mainResult = {
-        text: scrapedData.text,
+        text: clampText(scrapedData.text, 15000),
         sentiment: majoritySentiment,
         sentimentScore: avgSentimentScore,
         confidence: avgConfidence,
@@ -180,13 +213,16 @@ router.post('/url', authenticate, analysisValidation.createFromUrl, async (req, 
     // Transform and save result
     const analysis = new Analysis({
       user: userId,
-      title: title || `${scrapedData.platform || 'url'} Analysis - ${new Date().toLocaleDateString()}`,
+      title: title || `${normalizePlatform(scrapedData.platform) || 'url'} Analysis - ${new Date().toLocaleDateString()}`,
       description,
-      inputText: scrapedData.text || `Content from URL: ${url}`,
+      inputText: clampText(scrapedData.text || `Content from URL: ${url}`, 10000),
       sourceUrl: url,
-      platform: scrapedData.platform || 'other',
+      platform: normalizePlatform(scrapedData.platform),
       urlAnalysisCost: URL_ANALYSIS_COST,
-      result: mainResult,
+      result: {
+        ...mainResult,
+        text: clampText(mainResult?.text || scrapedData.text || url, 15000)
+      },
       isBatch: batchResults.length > 0,
       batchResults: batchResults,
       metadata: {
