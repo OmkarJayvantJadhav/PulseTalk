@@ -4,6 +4,8 @@
  */
 
 const { chromium } = require('playwright');
+const axios = require('axios');
+const cheerio = require('cheerio');
 const { logger } = require('../config/logger');
 
 class SocialMediaScraper {
@@ -584,8 +586,73 @@ class SocialMediaScraper {
     } catch (error) {
       if (context) await context.close();
       logger.error(`Scraping error: ${error.message}`);
+
+      // Graceful fallback for environments where Playwright browser binaries
+      // are not present (common in low-cost/free deployments).
+      if (
+        error.message.includes('Executable doesn\'t exist') ||
+        error.message.includes('Please run the following command to download new browsers')
+      ) {
+        logger.warn('Playwright unavailable, falling back to lightweight HTTP scraper');
+        const fallbackResult = await this.extractWithHttpFallback(url, platform);
+        return {
+          ...fallbackResult,
+          sourceUrl: url,
+          extractedAt: new Date()
+        };
+      }
+
       throw error;
     }
+  }
+
+  /**
+   * Fallback extraction without browser automation.
+   */
+  async extractWithHttpFallback(url, platform) {
+    const response = await axios.get(url, {
+      timeout: 20000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+
+    const $ = cheerio.load(response.data);
+    const title = ($('title').first().text() || '').trim();
+
+    // Try comment/review-like nodes first; fallback to paragraph text.
+    const candidates = [];
+    $('[class*="comment"], [class*="review"], [data-testid*="comment"], p').each((_, el) => {
+      const text = $(el).text().replace(/\s+/g, ' ').trim();
+      if (text.length > 20 && text.length < 1000) {
+        candidates.push(text);
+      }
+    });
+
+    const unique = Array.from(new Set(candidates)).slice(0, 80);
+    const bodyText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 5000);
+    const comments = unique.length > 0 ? unique : [bodyText].filter(Boolean);
+    const content = title || bodyText.slice(0, 300);
+
+    let text = `Source: ${title || url}\n\n`;
+    text += comments.map((c, i) => `${i + 1}) ${c}`).join('\n');
+
+    if (!text || text.length < 50) {
+      throw new Error('Insufficient content extracted.');
+    }
+
+    return {
+      text,
+      content,
+      comments,
+      platform: platform === 'other' ? 'web-generic' : platform,
+      author: '',
+      metadata: {
+        title,
+        count: comments.length,
+        mode: 'http-fallback'
+      }
+    };
   }
 }
 
