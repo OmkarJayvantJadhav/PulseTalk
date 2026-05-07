@@ -8,6 +8,8 @@ import ThemeProvider from './components/theme/ThemeProvider'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ChoiceScreen from './pages/ChoiceScreen'
+import Pricing from './pages/Pricing'
 import ForgotPassword from './pages/ForgotPassword'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
@@ -142,6 +144,22 @@ export default function App() {
               <PublicRoute>
                 <Register />
               </PublicRoute>
+            }
+          />
+          <Route
+            path="/choice-screen"
+            element={
+              <ProtectedRoute>
+                <ChoiceScreen />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pricing"
+            element={
+              <ProtectedRoute>
+                <Pricing />
+              </ProtectedRoute>
             }
           />
           <Route

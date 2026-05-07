@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { authService } from '../services/authService'
+import api from '../services/api'
 
 const AuthContext = createContext(null)
 
@@ -78,7 +79,8 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    setError
+    setError,
+    api
   }
 
   return (

@@ -5,6 +5,7 @@
 const { authenticate, optionalAuth } = require('./auth');
 const { handleValidationErrors, authValidation, analysisValidation } = require('./validate');
 const { errorHandler, ApiError } = require('./errorHandler');
+const { checkCredits } = require('./creditCheck');
 
 module.exports = {
   authenticate,
@@ -13,5 +14,6 @@ module.exports = {
   authValidation,
   analysisValidation,
   errorHandler,
-  ApiError
+  ApiError,
+  checkCredits
 };

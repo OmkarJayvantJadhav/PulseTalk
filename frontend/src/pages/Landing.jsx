@@ -348,8 +348,8 @@ const pricingPlans = [
         price: 0,
         popular: false,
         features: [
-            '100 analyses per month',
-            'Text analysis',
+            '100 credits',
+            'Text + URL analysis',
             'Basic sentiment detection',
             'Email support',
             'API access',
@@ -360,7 +360,7 @@ const pricingPlans = [
         price: 29,
         popular: true,
         features: [
-            '1,000 analyses per month',
+            '1,000 credits',
             'Text + URL analysis',
             'Advanced emotion detection',
             'Priority support',
@@ -374,14 +374,13 @@ const pricingPlans = [
         price: 99,
         popular: false,
         features: [
-            'Unlimited analyses',
+            'Unlimited credits',
             'All analysis types',
             'Custom AI models',
             '24/7 dedicated support',
             'Advanced API',
             'Custom integrations',
-            'SLA guarantee',
-            'White-label option',
+            
         ],
     },
 ]

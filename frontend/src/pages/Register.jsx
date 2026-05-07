@@ -31,7 +31,8 @@ export default function Register() {
 
     try {
       await register(email, password, name)
-      navigate('/dashboard')
+      // Redirect to choice screen for trial or premium selection
+      navigate('/choice-screen')
     } catch (err) {
       // Check for validation details
       if (err.response?.data?.details && err.response.data.details.length > 0) {

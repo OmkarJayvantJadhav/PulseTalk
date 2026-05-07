@@ -7,7 +7,7 @@ const router = express.Router();
 
 const { Analysis, User } = require('../models');
 const { mlService, socialMediaScraper } = require('../services');
-const { authenticate, analysisValidation } = require('../middleware');
+const { authenticate, analysisValidation, checkCredits } = require('../middleware');
 const { logger } = require('../config/logger');
 
 const ALLOWED_PLATFORMS = new Set([
@@ -55,27 +55,13 @@ const buildEmergencyAnalysis = (inputText, title = 'Fallback Analysis') => {
 
 /**
  * POST /api/analysis
- * Create new analysis
+ * Create new analysis (costs 1 credit)
  */
-router.post('/', authenticate, analysisValidation.create, async (req, res, next) => {
+router.post('/', authenticate, checkCredits(1), analysisValidation.create, async (req, res, next) => {
   try {
     const { text, title, description, tags } = req.body;
     const userId = req.userId;
-
-    // Check credits
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'User not found'
-      });
-    }
-    if (user.analysisCredits <= 0) {
-      return res.status(402).json({
-        error: 'Payment Required',
-        message: 'Insufficient analysis credits'
-      });
-    }
+    const user = req.user;
 
     // Call ML Engine
     const mlResult = await mlService.analyzeText(text);
@@ -100,8 +86,10 @@ router.post('/', authenticate, analysisValidation.create, async (req, res, next)
 
     await analysis.save();
 
-    // Update user stats
-    user.analysisCredits -= 1;
+    // Decrement credits only if not on active subscription
+    if (user.subscriptionStatus !== 'active') {
+      user.decrementCredits(1);
+    }
     user.totalAnalyses += 1;
     await user.save();
 
@@ -127,30 +115,15 @@ router.post('/', authenticate, analysisValidation.create, async (req, res, next)
 
 /**
  * POST /api/analysis/url
- * Create analysis from social media URL
+ * Create analysis from social media URL (costs 3 credits)
  */
-router.post('/url', authenticate, analysisValidation.createFromUrl, async (req, res, next) => {
+router.post('/url', authenticate, checkCredits(3), analysisValidation.createFromUrl, async (req, res, next) => {
   const startTime = Date.now();
 
   try {
     const { url, title, description } = req.body;
     const userId = req.userId;
-    const URL_ANALYSIS_COST = 3; // Credits for URL-based analysis
-
-    // Check credits
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'User not found'
-      });
-    }
-    if (user.analysisCredits < URL_ANALYSIS_COST) {
-      return res.status(402).json({
-        error: 'Payment Required',
-        message: `Insufficient credits. URL analysis requires ${URL_ANALYSIS_COST} credits, you have ${user.analysisCredits}`
-      });
-    }
+    const user = req.user;
 
     logger.info(`URL analysis requested by user ${userId}: ${url}`);
 
@@ -250,7 +223,7 @@ router.post('/url', authenticate, analysisValidation.createFromUrl, async (req, 
       inputText: clampText(scrapedData.text || `Content from URL: ${url}`, 10000),
       sourceUrl: url,
       platform: normalizePlatform(scrapedData.platform),
-      urlAnalysisCost: URL_ANALYSIS_COST,
+      urlAnalysisCost: 3,
       result: {
         ...mainResult,
         text: clampText(mainResult?.text || scrapedData.text || url, 15000)
@@ -270,8 +243,10 @@ router.post('/url', authenticate, analysisValidation.createFromUrl, async (req, 
 
     await analysis.save();
 
-    // Update user stats
-    user.analysisCredits -= URL_ANALYSIS_COST;
+    // Decrement credits only if not on active subscription
+    if (user.subscriptionStatus !== 'active') {
+      user.decrementCredits(3);
+    }
     user.totalAnalyses += 1;
     await user.save();
 
@@ -281,7 +256,7 @@ router.post('/url', authenticate, analysisValidation.createFromUrl, async (req, 
       message: 'URL analysis complete',
       analysis: analysis.toJSON(),
       remainingCredits: user.analysisCredits,
-      creditsUsed: URL_ANALYSIS_COST
+      creditsUsed: 3
     });
 
   } catch (error) {
@@ -302,16 +277,28 @@ router.post('/url', authenticate, analysisValidation.createFromUrl, async (req, 
 
 /**
  * POST /api/analysis/batch
- * Create batch analysis
+ * Create batch analysis (costs 1 credit per text, max 100 texts)
  */
 router.post('/batch', authenticate, analysisValidation.batch, async (req, res, next) => {
   try {
     const { texts, title } = req.body;
     const userId = req.userId;
+    const user = req.user;
 
-    // Check credits
-    const user = await User.findById(userId);
-    if (user.analysisCredits < texts.length) {
+    // Check if user has credits or active subscription
+    const hasActiveSubscription = user.subscriptionStatus === 'active' && 
+                                  user.subscriptionExpiresAt > new Date();
+    const hasActiveTrial = user.subscriptionStatus === 'trial' && 
+                          user.trialEndedAt > new Date();
+
+    if (!hasActiveSubscription && !hasActiveTrial) {
+      return res.status(402).json({
+        error: 'Payment Required',
+        message: 'Please choose a plan to access this feature.'
+      });
+    }
+
+    if (!hasActiveSubscription && user.analysisCredits < texts.length) {
       return res.status(402).json({
         error: 'Payment Required',
         message: `Insufficient credits. Need ${texts.length}, have ${user.analysisCredits}`
@@ -341,8 +328,10 @@ router.post('/batch', authenticate, analysisValidation.batch, async (req, res, n
       })
     );
 
-    // Update user stats
-    user.analysisCredits -= texts.length;
+    // Decrement credits only if not on active subscription
+    if (user.subscriptionStatus !== 'active') {
+      user.decrementCredits(texts.length);
+    }
     user.totalAnalyses += texts.length;
     await user.save();
 

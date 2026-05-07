@@ -33,7 +33,36 @@ const userSchema = new mongoose.Schema({
   }],
   analysisCredits: {
     type: Number,
-    default: 100 // Free tier credits
+    default: 0 // Updated when user chooses trial or subscription
+  },
+  subscriptionStatus: {
+    type: String,
+    enum: ['none', 'trial', 'active', 'expired'],
+    default: 'none'
+  },
+  subscriptionPlan: {
+    type: String,
+    enum: ['free', 'basic', 'pro', 'enterprise'],
+    default: 'free'
+  },
+  subscriptionExpiresAt: {
+    type: Date
+  },
+  trialStartedAt: {
+    type: Date
+  },
+  trialEndedAt: {
+    type: Date
+  },
+  // Trial abuse protection
+  registrationIpHash: {
+    type: String // Hash of registration IP for fraud detection
+  },
+  registrationDeviceId: {
+    type: String // Device fingerprint for fraud detection
+  },
+  lastTrialAttemptAt: {
+    type: Date
   },
   totalAnalyses: {
     type: Number,
@@ -87,6 +116,39 @@ userSchema.methods.addRefreshToken = function(token, expiresAt) {
 // Remove specific refresh token
 userSchema.methods.removeRefreshToken = function(token) {
   this.refreshTokens = this.refreshTokens.filter(t => t.token !== token);
+};
+
+// Check if user has active access (trial or subscription)
+userSchema.methods.hasActiveAccess = function() {
+  if (this.subscriptionStatus === 'active' && this.subscriptionExpiresAt > new Date()) {
+    return true;
+  }
+  if (this.subscriptionStatus === 'trial' && this.trialEndedAt > new Date()) {
+    return true;
+  }
+  return false;
+};
+
+// Check if user has sufficient credits
+userSchema.methods.hasCredits = function(amount = 1) {
+  return this.analysisCredits >= amount;
+};
+
+// Decrement credits
+userSchema.methods.decrementCredits = function(amount = 1) {
+  this.analysisCredits = Math.max(0, this.analysisCredits - amount);
+  return this.analysisCredits;
+};
+
+// Increment credits (for purchases)
+userSchema.methods.incrementCredits = function(amount) {
+  this.analysisCredits += amount;
+  return this.analysisCredits;
+};
+
+// Check if trial is expired
+userSchema.methods.isTrialExpired = function() {
+  return this.subscriptionStatus === 'trial' && this.trialEndedAt <= new Date();
 };
 
 // toJSON transform
